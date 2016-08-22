@@ -87,7 +87,7 @@ class BaseAttributesField(models.Field):
         defaults.update(**kwargs)
         return super(BaseAttributesField, self).formfield(**defaults)
 
-    def from_db_value(self, value, expression, connection, context):
+    def to_python(self, value):
         """
         This is a temporary workaround for #7 taken from
         https://bitbucket.org/schinckel/django-jsonfield/pull-requests/32/make-from_db_value-compatible-with/diff
@@ -99,6 +99,9 @@ class BaseAttributesField(models.Field):
             return json.loads(value)
         else:
             return value
+    
+    def from_db_value(self, value, expression, connection, context):
+        return self.to_python(value)
 
     def get_db_prep_value(self, value, connection=None, prepared=None):
         return self.get_prep_value(value)
