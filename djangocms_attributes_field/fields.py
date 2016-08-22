@@ -16,17 +16,21 @@ from django.utils import six
 
 from .widgets import AttributesWidget
 
+try:
+    from django.db.models import SubfieldBase
+except:
+    SubfieldBase = None
 
 regex_key_validator = RegexValidator(regex=r'^[a-z][-a-z0-9_]*\Z',
                                      flags=re.IGNORECASE, code='invalid')
 
 
-class AttributesFormField(forms.CharField):
+class BaseAttributesFormField(forms.CharField):
     empty_values = [None, '']
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('widget', AttributesWidget)
-        super(AttributesFormField, self).__init__(*args, **kwargs)
+        super(BaseAttributesFormField, self).__init__(*args, **kwargs)
 
     def to_python(self, value):
         if isinstance(value, six.string_types) and value:
@@ -45,7 +49,7 @@ class AttributesFormField(forms.CharField):
             raise forms.ValidationError(self.error_messages['required'], code='required')
 
 
-class AttributesField(models.Field):
+class BaseAttributesField(models.Field):
     """
     This is an opinionated sub-class of JSONField. Here's a summary of the
     primary differences:
@@ -72,7 +76,7 @@ class AttributesField(models.Field):
         # Note we accept uppercase letters in the param, but the comparison
         # is not case sensitive. So, we coerce the input to lowercase here.
         self.excluded_keys = [key.lower() for key in excluded_keys]
-        super(AttributesField, self).__init__(*args, **kwargs)
+        super(BaseAttributesField, self).__init__(*args, **kwargs)
         self.validate(self.get_default(), None)
 
     def formfield(self, **kwargs):
@@ -81,7 +85,7 @@ class AttributesField(models.Field):
             'widget': AttributesWidget
         }
         defaults.update(**kwargs)
-        return super(AttributesField, self).formfield(**defaults)
+        return super(BaseAttributesField, self).formfield(**defaults)
 
     def from_db_value(self, value, expression, connection, context):
         """
@@ -127,7 +131,7 @@ class AttributesField(models.Field):
             if isinstance(default, six.string_types):
                 return json.loads(default)
             return json.loads(json.dumps(default))
-        return super(AttributesField, self).get_default()
+        return super(BaseAttributesField, self).get_default()
 
     def get_internal_type(self):
         return 'TextField'
@@ -137,7 +141,7 @@ class AttributesField(models.Field):
         Adds a @property: «name»_str that returns a string representation of
         the attributes ready for inclusion on an HTML element.
         """
-        super(AttributesField, self).contribute_to_class(cls, name, **kwargs)
+        super(BaseAttributesField, self).contribute_to_class(cls, name, **kwargs)
         # Make sure we're not going to clobber something that already exists.
         property_name = '{name}_str'.format(name=name)
         if not hasattr(cls, property_name):
@@ -237,3 +241,14 @@ class AttributesField(models.Field):
                 else:
                     attrs.append('{key}'.format(key=key))
         return mark_safe(" ".join(attrs))
+
+
+if not SubfieldBase:
+    AttributesField = BaseAttributesField
+    AttributesFormField = BaseAttributesFormField
+else:
+    class AttributesField(six.with_metaclass(SubfieldBase, BaseAttributesField)):
+        pass
+
+    class AttributesFormField(six.with_metaclass(SubfieldBase, BaseAttributesFormField)):
+        pass
