@@ -21,8 +21,8 @@ try:
 except:
     SubfieldBase = None
 
-regex_key_validator = RegexValidator(regex=r'^[a-z][-a-z0-9_]*\Z',
-                                     flags=re.IGNORECASE, code='invalid')
+regex_key_validator = RegexValidator(regex=r'^[a-zA-Z][-a-zA-Z0-9_]*\Z',
+                                     code='invalid')
 
 
 class BaseAttributesFormField(forms.CharField):
